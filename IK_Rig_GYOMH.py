@@ -10,7 +10,7 @@
 # __________________________________________ ___________________________________________
 # |                                       | |                                         |
 # |    IK RIG                             | | Rig IK / FK de chaine de N bones        |
-# |       V1.15                           | | - Rig cree par le script (Create Rig)   |
+# |       V1.16                           | | - Rig cree par le script (Create Rig)   |
 # |                                       | | - Poignees a icone, face camera         |
 # |_______________________________________| |_________________________________________|
 # |    Instructions :                     | | - Modes 2D / 3D, IK ou FK               |
@@ -73,6 +73,10 @@
 # V1.14 - 07/10/2026 - Bank Manual Setup : IK1 Angle Min / Max (avant Bone 1) : limite l'angle du bone 1 dans le
 #                      plan XY du rig (defaut -180 / 180 = sans limite ; remis par RESET).
 # V1.15 - 07/10/2026 - Bank Manual Setup : 2D Mode (Planar) en haut du bank (case : 2D / decochee : 3D).
+# V1.16 - 08/10/2026 - Meshes IMPORTES (FBX / OBJ... : Scene3dFileGeometryGenerator) : axe Y, pivot a la base (comme une
+#                      capsule) ; avant, geometrie inconnue = axe X et 1 m pour le dernier bone, les elements etaient
+#                      couches a l'horizontale. Nouveau champ Last Bone Length (bank Manual Setup, 0 = auto : meme
+#                      longueur que le bone precedent) pour la longueur du dernier bone, que la geometrie ne donne pas.
 #
 
 bones: Oil.createObject("OwnedVector(WeakPointer(Layer))")
@@ -94,6 +98,7 @@ autoMode: Oil.Boolean(True)
 ik1Min: Oil.createObject("Angle")
 ik1Max: Oil.createObject("Angle")
 resetRig: Oil.Boolean(False)
+lastBoneLength: Oil.PositiveMeters(0.0)
 
 import math
 import json
@@ -196,6 +201,7 @@ def bank_spec(name, N):
         out.append(('1 - Bone Count', 'var', 'boneCount', 'PositiveInteger'))
         out.append(('IK1 Angle Min', 'var', 'ik1Min', 'Angle'))
         out.append(('IK1 Angle Max', 'var', 'ik1Max', 'Angle'))
+        out.append(('Last Bone Length (imported)', 'var', 'lastBoneLength', 'PositiveMeters'))
         for k in range(1, N + 1):
             out.append(('Bone %d' % k, 'bone', k, None))
             if k < N:                                  # entre deux bones : limite l'articulation a 180 degrés
@@ -333,6 +339,11 @@ def bone_axis(layer):
     # (0 = pivot a la base, L/2 = pivot au centre). U = face avant (plans) : fixe le roulis.
     g = layer.generator
     sc = layer.placement.size
+    try:
+        if g.getOilClassName() == 'Scene3dFileGeometryGenerator':     # mesh importe : axe Y, pivot a la base
+            return (0.0, 1.0, 0.0), None, 0.0, None                           # longueur : distance au bone suivant / Last Bone Length
+    except Exception:
+        pass
     try:
         if hasattr(g, 'height'):                      # capsule / cylindre : pivot a la base, axe Y
             return (0.0, 1.0, 0.0), g.height.get() * abs(sc.y.get()), 0.0, None
@@ -640,7 +651,7 @@ def reset_script(comp, grp):
     for var, val in ((script.enableIK, True), (script.setupPivots, False), (script.lockBones, True),
                      (script.planarMode, False), (script.fkMode, False), (script.reverseAxis, False),
                      (script.createRig, False), (script.showJoints, True), (script.boneCount, DEFAULT_BONES),
-                     (script.autoMode, False)):
+                     (script.autoMode, False), (script.lastBoneLength, 0.0)):
         set_var(comp, var, val)
     set_var(comp, script.boneRotation, 0.0)
     set_var(comp, script.ik1Min, -math.pi)                  # pas de limite d'angle pour IK1
@@ -879,7 +890,7 @@ def rig_sig(els):
     for e in els:
         ax, ln, po, un = bone_axis(e)
         parts.append('%.4f,%.4f,%s' % (-1.0 if ln is None else ln, po, ','.join('%g' % v for v in ax)))
-    return str(len(els)) + ':' + '|'.join(parts)
+    return str(len(els)) + ':' + '|'.join(parts) + '|L%.4f' % script.lastBoneLength.get()
 
 def rot_between(a, b):
     # rotation 3x3 minimale qui envoie le vecteur unitaire a sur b
@@ -1020,7 +1031,11 @@ def do_rig(els, jn, tgt):
         ax, ln, po, un = bone_axis(e)
         axes.append(list(ax))
         if ln is None or ln < 1e-3:
-            ln = norm(sub(pos(els[i + 1]), pos(e))) if i < N - 1 else 1.0
+            if i < N - 1:
+                ln = norm(sub(pos(els[i + 1]), pos(e)))
+            else:                                  # dernier bone : Last Bone Length, sinon meme longueur que le precedent
+                lb = script.lastBoneLength.get()
+                ln = lb if lb > 1e-3 else (Ls[-1] if Ls else 1.0)
         Ls.append(ln if ln > 1e-3 else 1.0)
         Pos.append(po)
         Us.append(list(un) if un is not None else None)

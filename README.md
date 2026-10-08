@@ -37,6 +37,10 @@ Two Smode Scripts for character / object rigging, inspired by [Duik](https://rxl
 ## Notes
 
 - Angles in the Script's own parameters are in **radians** (the Banks show degrees).
+- **Imported meshes (FBX / OBJ...) work in IK Rig** (V1.16): the bone axis is **Y** with the pivot at the base, like a capsule,
+  so export your pieces with each pivot on its joint and the bone running along +Y. The length of a bone is the distance to the
+  next one, but the **last bone's length cannot be read from an imported mesh**: set **Last Bone Length (imported)** in the
+  *Manual Setup* bank (0 = same length as the previous bone), then click Create Rig again.
 - IK Deform needs enough subdivisions along the object: it raises *Height Precision* / *Precision* automatically and
   RESET restores them. Imported meshes are **not supported yet** (unknown objects fall back to the Y axis, 1 m, with a
   warning). The cylinder pivot and the sphere / torus orientation are assumptions, please report a mismatch.

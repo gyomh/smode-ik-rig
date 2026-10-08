@@ -40,6 +40,10 @@ Deux Scripts Smode de rigging pour personnage / objet, inspirés de [Duik](https
 ## Notes
 
 - Les angles des paramètres du Script sont en **radians** (les Banks affichent des degrés).
+- **Les maillages importés (FBX / OBJ...) fonctionnent dans IK Rig** (V1.16) : l'axe d'un bone est **Y**, pivot à la base, comme une
+  capsule ; exportez donc vos pièces avec chaque pivot sur son articulation et le bone orienté le long de +Y. La longueur d'un bone est
+  la distance au suivant, mais celle du **dernier bone ne peut pas être lue sur un maillage importé** : réglez **Last Bone Length
+  (imported)** dans le bank *Manual Setup* (0 = même longueur que le bone précédent), puis recliquez sur Create Rig.
 - IK Deform a besoin de subdivisions suffisantes le long de l'objet : il augmente *Height Precision* / *Precision*
   automatiquement et RESET les restaure. Les maillages importés ne sont **pas encore gérés** (un objet inconnu prend
   l'axe Y, 1 m, avec un avertissement). Le pivot du cylindre et l'orientation de la sphère / du torus sont des
